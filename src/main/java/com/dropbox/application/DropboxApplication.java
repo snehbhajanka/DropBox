@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,32 +25,6 @@ public class DropboxApplication {
 
 		SpringApplication.run(DropboxApplication.class, args);
 	}
-
-
-
-
-	/*Upload File API: Allow users to upload files onto the platform.
-	Endpoint: POST /files/upload
-	Input: File binary data, file name, metadata (if any)
-	Output: A unique file identifier
-	Metadata to Save: File name, createdAt timestamp, size, file type
-2. Read File API: Retrieve a specific file based on a unique identifier.
-			Endpoint: GET /files/{fileId}
-	Input: Unique file identifier
-	Output: File binary data
-3. Update File API: Update an existing file or its metadata.
-			Endpoint: PUT /files/{fileId}
-	Input: New file binary data or new metadata
-	Output: Updated metadata or a success message
-4. Delete File API: Delete a specific file based on a unique identifier.
-			Endpoint: DELETE /files/{fileId}
-
-	Input: Unique file identifier
-	Output: A success or failure message
-5. List Files API: List all available files and their metadata.
-			Endpoint: GET /files
-	Input: None
-	Output: A list of file metadata objects, including file IDs, names, createdAt timestamps, etc.*/
 
 
 @GetMapping("/files")
@@ -87,6 +62,42 @@ public ResponseEntity<Map<String,String>> uploadFile(
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 				.body(Map.of("error","Failed to upload the file"));
 	}
+}
+
+@DeleteMapping("/files/{fileID}")
+public ResponseEntity<?> deleteFile(@PathVariable String fileID){
+		if(fileStorage.containsKey(fileID)){
+			fileStorage.remove(fileID);
+			return ResponseEntity.ok(Map.of("message","File deleted successfully"));
+		} else {
+			return  ResponseEntity.notFound().build();
+		}
+}
+
+@PutMapping("/files/{fileID}")
+public ResponseEntity<?> updateFile(@PathVariable String fileID,
+									@RequestParam(value="file",required = false) MultipartFile file,
+									@RequestParam(value ="metadata",required = false) Map<String,String> metaData){
+		try {
+			FileMetaData fileMetaData = fileStorage.get(fileID);
+			if (fileMetaData != null) {
+				if (file != null) {
+					fileMetaData.setData(file.getBytes());
+					fileMetaData.setSize(file.getSize());
+					fileMetaData.setContentType(file.getContentType());
+				}
+				if (metaData != null) {
+					fileMetaData.getMetadata().putAll(metaData);
+				}
+				return ResponseEntity.ok(fileMetaData.getMetadata());
+			} else {
+				return ResponseEntity.notFound().build();
+			}
+		} catch (Exception e){
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Map.of("error","Failed to update the file"));
+
+		}
 }
 
 
