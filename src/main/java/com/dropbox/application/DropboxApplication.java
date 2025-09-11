@@ -20,6 +20,8 @@ import java.util.UUID;
 public class DropboxApplication {
 
 	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
+	// Maximum file size: 10MB
+	private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 	public static void main(String[] args) {
 
@@ -38,8 +40,10 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		// Sanitize filename for Content-Disposition header to prevent header injection
+		String safeFilename = SecurityUtils.sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=" + safeFilename)
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -52,10 +56,24 @@ public ResponseEntity<Map<String,String>> uploadFile(
 		@RequestParam("file_name") String fileNname,
 		@RequestParam(value = "metadata",required = false) Map<String,String> metaData){
 	try {
+		// Validate file size
+		if (!SecurityUtils.isValidFileSize(file.getSize(), MAX_FILE_SIZE)) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", "File size exceeds maximum allowed size of " + (MAX_FILE_SIZE / 1024 / 1024) + "MB"));
+		}
+		
+		// Validate and sanitize filename
+		if (!SecurityUtils.isValidFilename(fileNname)) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", "Invalid filename. Filename contains illegal characters or path traversal sequences."));
+		}
+		
+		String sanitizedFilename = SecurityUtils.sanitizeFilename(fileNname);
+		
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
 		FileMetaData fileMetaData = new FileMetaData(fileID,
-				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
+				sanitizedFilename, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
 		fileStorage.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
@@ -82,6 +100,12 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 			FileMetaData fileMetaData = fileStorage.get(fileID);
 			if (fileMetaData != null) {
 				if (file != null) {
+					// Validate file size for updates
+					if (!SecurityUtils.isValidFileSize(file.getSize(), MAX_FILE_SIZE)) {
+						return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+								.body(Map.of("error", "File size exceeds maximum allowed size of " + (MAX_FILE_SIZE / 1024 / 1024) + "MB"));
+					}
+					
 					fileMetaData.setData(file.getBytes());
 					fileMetaData.setSize(file.getSize());
 					fileMetaData.setContentType(file.getContentType());
