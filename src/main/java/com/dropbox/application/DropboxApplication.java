@@ -38,8 +38,9 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -52,10 +53,18 @@ public ResponseEntity<Map<String,String>> uploadFile(
 		@RequestParam("file_name") String fileNname,
 		@RequestParam(value = "metadata",required = false) Map<String,String> metaData){
 	try {
+		// Validate filename
+		if (fileNname == null || fileNname.trim().isEmpty()) {
+			return ResponseEntity.badRequest()
+					.body(Map.of("error","File name cannot be empty"));
+		}
+		
+		String sanitizedFilename = sanitizeFilename(fileNname);
+		
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
 		FileMetaData fileMetaData = new FileMetaData(fileID,
-				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
+				sanitizedFilename, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
 		fileStorage.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
@@ -98,6 +107,35 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 					.body(Map.of("error","Failed to update the file"));
 
 		}
+}
+
+/**
+ * Sanitizes filename to prevent HTTP header injection attacks
+ * Removes control characters and dangerous characters that could be used for header injection
+ */
+private String sanitizeFilename(String filename) {
+	if (filename == null) {
+		return "file";
+	}
+	
+	// Remove control characters (0x00-0x1F and 0x7F-0x9F)
+	// Remove characters that could be used for header injection: \r, \n, \t
+	String sanitized = filename.replaceAll("[\\x00-\\x1F\\x7F-\\x9F\\r\\n\\t]", "");
+	
+	// Remove quotes to prevent escaping issues
+	sanitized = sanitized.replace("\"", "").replace("'", "");
+	
+	// Limit length to prevent excessively long filenames
+	if (sanitized.length() > 255) {
+		sanitized = sanitized.substring(0, 255);
+	}
+	
+	// If filename becomes empty after sanitization, provide a default
+	if (sanitized.trim().isEmpty()) {
+		sanitized = "file";
+	}
+	
+	return sanitized.trim();
 }
 
 
