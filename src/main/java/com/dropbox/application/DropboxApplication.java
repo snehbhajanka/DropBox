@@ -38,8 +38,10 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		// Sanitize filename to prevent header injection attacks
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -98,6 +100,32 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 					.body(Map.of("error","Failed to update the file"));
 
 		}
+}
+
+/**
+ * Sanitizes filename to prevent header injection attacks.
+ * Removes or encodes characters that could be used for HTTP header injection.
+ */
+private String sanitizeFilename(String filename) {
+	if (filename == null) {
+		return "unknown";
+	}
+	
+	// Remove or replace dangerous characters that could be used for header injection
+	String sanitized = filename
+		.replaceAll("[\r\n\t]", "") // Remove carriage returns, line feeds, and tabs
+		.replaceAll("[\"\\\\]", "_") // Replace quotes and backslashes
+		.replaceAll("[<>]", "_") // Remove angle brackets to prevent script tags
+		.replaceAll("Content-Type:", "_") // Remove Content-Type header attempts
+		.replaceAll("script", "_") // Remove script keywords
+		.trim();
+	
+	// If filename becomes empty after sanitization, provide a default
+	if (sanitized.isEmpty()) {
+		return "file";
+	}
+	
+	return sanitized;
 }
 
 
