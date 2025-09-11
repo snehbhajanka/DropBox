@@ -7,13 +7,15 @@ import java.util.Map;
 public class FileMetaData {
 
     private String fileID;
+    private String accountId;
 
 
 
     private String contentType;
 
-    public FileMetaData(String fileID, String fileName, LocalDateTime createdAt, long size, String ContentType, Map<String, String> metadata,byte[] data) {
+    public FileMetaData(String fileID, String accountId, String fileName, LocalDateTime createdAt, long size, String ContentType, Map<String, String> metadata,byte[] data) {
         this.fileID = fileID;
+        this.accountId = accountId;
         this.fileName = fileName;
         this.createdAt = createdAt;
         this.contentType=ContentType;
@@ -44,6 +46,14 @@ public class FileMetaData {
 
     public void setFileID(String fileID) {
         this.fileID = fileID;
+    }
+
+    public String getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(String accountId) {
+        this.accountId = accountId;
     }
 
     public String getFileName() {
