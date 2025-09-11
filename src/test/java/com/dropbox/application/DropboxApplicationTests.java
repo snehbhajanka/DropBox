@@ -136,4 +136,60 @@ class DropboxApplicationTests {
 		assertEquals("test content", new String(downloadResponse.getBody()));
 	}
 
+	@Test
+	void testEmptyFilenameHandling() {
+		// Test that empty filenames are handled properly
+		String emptyFilename = "";
+		
+		// Upload a file with empty filename
+		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+		body.add("file", new ByteArrayResource("test content".getBytes()) {
+			@Override
+			public String getFilename() {
+				return "test.txt";
+			}
+		});
+		body.add("file_name", emptyFilename);
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+		
+		HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+		
+		ResponseEntity<String> uploadResponse = restTemplate.postForEntity(
+			"http://localhost:" + port + "/files/upload", requestEntity, String.class);
+		
+		// Should return bad request for empty filename
+		assertEquals(HttpStatus.BAD_REQUEST, uploadResponse.getStatusCode());
+		assertTrue(uploadResponse.getBody().contains("File name cannot be empty"));
+	}
+
+	@Test
+	void testFilenameWithOnlyControlCharacters() {
+		// Test filename with only control characters gets rejected
+		String controlCharsFilename = "\r\n\t";
+		
+		// Upload a file with control characters filename
+		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+		body.add("file", new ByteArrayResource("test content".getBytes()) {
+			@Override
+			public String getFilename() {
+				return "test.txt";
+			}
+		});
+		body.add("file_name", controlCharsFilename);
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+		
+		HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+		
+		ResponseEntity<String> uploadResponse = restTemplate.postForEntity(
+			"http://localhost:" + port + "/files/upload", requestEntity, String.class);
+		
+		// Should return bad request for filename with only control characters
+		assertEquals(HttpStatus.BAD_REQUEST, uploadResponse.getStatusCode());
+		assertTrue(uploadResponse.getBody().contains("File name cannot be empty"));
+	}
+
 }
