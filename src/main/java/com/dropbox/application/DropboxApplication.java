@@ -27,6 +27,15 @@ public class DropboxApplication {
 	}
 
 
+@GetMapping("/health")
+public ResponseEntity<Map<String, Object>> healthCheck(){
+	return ResponseEntity.ok(Map.of(
+		"status", "UP",
+		"timestamp", LocalDateTime.now(),
+		"service", "DropBox File Storage"
+	));
+}
+
 @GetMapping("/files")
 public ResponseEntity<Map<String, Object>> listFiles(){
 	if(fileStorage!=null && fileStorage.values()!=null && !fileStorage.values().isEmpty())
