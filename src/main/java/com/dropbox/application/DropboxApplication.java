@@ -22,8 +22,12 @@ public class DropboxApplication {
 	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
 
 	public static void main(String[] args) {
-
 		SpringApplication.run(DropboxApplication.class, args);
+	}
+
+	// Add method to clear storage for testing
+	public static void clearStorage() {
+		fileStorage.clear();
 	}
 
 
