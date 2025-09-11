@@ -14,12 +14,55 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @SpringBootApplication
 @RestController
 public class DropboxApplication {
 
 	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
+	
+	// Security constants
+	private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+	private static final Pattern SAFE_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._-]+$");
+	
+	// Security validation methods
+	String sanitizeFileName(String fileName) {
+		if (fileName == null || fileName.trim().isEmpty()) {
+			return "unnamed_file";
+		}
+		
+		// Remove path traversal attempts
+		fileName = fileName.replaceAll("\\.\\./", "").replaceAll("\\.\\./", "");
+		
+		// Remove dangerous characters and control characters
+		fileName = fileName.replaceAll("[\\r\\n\\t\\u0000\\f\\u0008]", "");
+		fileName = fileName.replaceAll("[<>:\"/\\\\|?*]", "_");
+		
+		// Limit length
+		if (fileName.length() > 255) {
+			fileName = fileName.substring(0, 255);
+		}
+		
+		// Ensure it's not empty after sanitization
+		if (fileName.trim().isEmpty()) {
+			return "unnamed_file";
+		}
+		
+		return fileName.trim();
+	}
+	
+	String sanitizeHeaderValue(String value) {
+		if (value == null) {
+			return "";
+		}
+		// Remove CRLF injection attempts and control characters
+		return value.replaceAll("[\\r\\n\\t\\u0000\\f\\u0008]", "");
+	}
+	
+	boolean isValidFileSize(long size) {
+		return size > 0 && size <= MAX_FILE_SIZE;
+	}
 
 	public static void main(String[] args) {
 
@@ -38,8 +81,10 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		// Sanitize filename to prevent header injection
+		String safeFileName = sanitizeHeaderValue(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + safeFileName + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -52,10 +97,19 @@ public ResponseEntity<Map<String,String>> uploadFile(
 		@RequestParam("file_name") String fileNname,
 		@RequestParam(value = "metadata",required = false) Map<String,String> metaData){
 	try {
+		// Validate file size
+		if (!isValidFileSize(file.getSize())) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", "File size exceeds maximum limit of " + (MAX_FILE_SIZE / 1024 / 1024) + " MB"));
+		}
+		
+		// Sanitize file name to prevent path traversal and other attacks
+		String sanitizedFileName = sanitizeFileName(fileNname);
+		
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
 		FileMetaData fileMetaData = new FileMetaData(fileID,
-				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
+				sanitizedFileName, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
 		fileStorage.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
