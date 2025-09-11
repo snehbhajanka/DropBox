@@ -19,7 +19,11 @@ import java.util.UUID;
 @RestController
 public class DropboxApplication {
 
-	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
+	private static final Map<String, Map<String, FileMetaData>> accountFileStorage = new HashMap<>();
+
+	private Map<String, FileMetaData> getAccountStorage(String accountId) {
+		return accountFileStorage.computeIfAbsent(accountId, k -> new HashMap<>());
+	}
 
 	public static void main(String[] args) {
 
@@ -28,16 +32,18 @@ public class DropboxApplication {
 
 
 @GetMapping("/files")
-public ResponseEntity<Map<String, Object>> listFiles(){
-	if(fileStorage!=null && fileStorage.values()!=null && !fileStorage.values().isEmpty())
-		return ResponseEntity.ok(Map.of("files",fileStorage.values()));
+public ResponseEntity<Map<String, Object>> listFiles(@RequestParam(value = "account_id", defaultValue = "0") String accountId){
+	Map<String, FileMetaData> accountFiles = getAccountStorage(accountId);
+	if(accountFiles != null && !accountFiles.values().isEmpty())
+		return ResponseEntity.ok(Map.of("files", accountFiles.values()));
 	else return ResponseEntity.ok(Map.of("status","No files to display"));
 }
 
 @GetMapping("/files/{fileID}")
-public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
-	FileMetaData file=fileStorage.get(fileID);
-	if(file!=null){
+public ResponseEntity<byte[]> readFile(@PathVariable String fileID, @RequestParam(value = "account_id", defaultValue = "0") String accountId){
+	Map<String, FileMetaData> accountFiles = getAccountStorage(accountId);
+	FileMetaData file = accountFiles.get(fileID);
+	if(file != null){
 		return ResponseEntity.ok()
 				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
 				.body(file.getData());
@@ -50,13 +56,15 @@ public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 public ResponseEntity<Map<String,String>> uploadFile(
 		@RequestParam("file") MultipartFile file,
 		@RequestParam("file_name") String fileNname,
+		@RequestParam(value = "account_id", defaultValue = "0") String accountId,
 		@RequestParam(value = "metadata",required = false) Map<String,String> metaData){
 	try {
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
-		FileMetaData fileMetaData = new FileMetaData(fileID,
+		FileMetaData fileMetaData = new FileMetaData(fileID, accountId,
 				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
-		fileStorage.put(fileID, fileMetaData);
+		Map<String, FileMetaData> accountFiles = getAccountStorage(accountId);
+		accountFiles.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -65,21 +73,24 @@ public ResponseEntity<Map<String,String>> uploadFile(
 }
 
 @DeleteMapping("/files/{fileID}")
-public ResponseEntity<?> deleteFile(@PathVariable String fileID){
-		if(fileStorage.containsKey(fileID)){
-			fileStorage.remove(fileID);
-			return ResponseEntity.ok(Map.of("message","File deleted successfully"));
-		} else {
-			return  ResponseEntity.notFound().build();
-		}
+public ResponseEntity<?> deleteFile(@PathVariable String fileID, @RequestParam(value = "account_id", defaultValue = "0") String accountId){
+	Map<String, FileMetaData> accountFiles = getAccountStorage(accountId);
+	if(accountFiles.containsKey(fileID)){
+		accountFiles.remove(fileID);
+		return ResponseEntity.ok(Map.of("message","File deleted successfully"));
+	} else {
+		return  ResponseEntity.notFound().build();
+	}
 }
 
 @PutMapping("/files/{fileID}")
 public ResponseEntity<?> updateFile(@PathVariable String fileID,
+									@RequestParam(value = "account_id", defaultValue = "0") String accountId,
 									@RequestParam(value="file",required = false) MultipartFile file,
 									@RequestParam(value ="metadata",required = false) Map<String,String> metaData){
 		try {
-			FileMetaData fileMetaData = fileStorage.get(fileID);
+			Map<String, FileMetaData> accountFiles = getAccountStorage(accountId);
+			FileMetaData fileMetaData = accountFiles.get(fileID);
 			if (fileMetaData != null) {
 				if (file != null) {
 					fileMetaData.setData(file.getBytes());
