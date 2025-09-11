@@ -21,6 +21,19 @@ public class DropboxApplication {
 
 	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
 
+	/**
+	 * Sanitizes filename to prevent header injection attacks
+	 */
+	private String sanitizeFilename(String filename) {
+		if (filename == null) {
+			return "unknown";
+		}
+		// Remove or replace characters that could cause header injection
+		return filename.replaceAll("[\\r\\n\\t\"]", "_")
+				.replaceAll("[^a-zA-Z0-9._-]", "_")
+				.trim();
+	}
+
 	public static void main(String[] args) {
 
 		SpringApplication.run(DropboxApplication.class, args);
@@ -38,8 +51,9 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
