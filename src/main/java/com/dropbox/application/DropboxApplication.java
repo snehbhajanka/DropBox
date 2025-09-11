@@ -38,12 +38,27 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
 	}
+}
+
+/**
+ * Sanitizes filename to prevent HTTP header injection attacks
+ * Removes or replaces characters that could be used for header injection
+ */
+private String sanitizeFilename(String filename) {
+	if (filename == null) {
+		return "download";
+	}
+	// Remove or replace dangerous characters that could cause header injection
+	// Replace CR, LF, and other control characters
+	return filename.replaceAll("[\\r\\n\\x00-\\x1f\\x7f-\\x9f]", "_")
+				   .replaceAll("[\"\\\\]", "_"); // Also escape quotes and backslashes for safety
 }
 
 @PostMapping("/files/upload")
