@@ -38,8 +38,9 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -100,5 +101,21 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 		}
 }
 
+	/**
+	 * Sanitizes filename to prevent HTTP header injection attacks.
+	 * Removes dangerous characters that could be used for header injection.
+	 * 
+	 * @param filename The original filename
+	 * @return Sanitized filename safe for use in HTTP headers
+	 */
+	private String sanitizeFilename(String filename) {
+		if (filename == null) {
+			return "unknown";
+		}
+		
+		// Remove carriage return, line feed, and other control characters
+		// that could be used for HTTP header injection
+		return filename.replaceAll("[\\r\\n\\x00-\\x1F\\x7F]", "_");
+	}
 
 }
