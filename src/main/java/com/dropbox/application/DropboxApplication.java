@@ -26,6 +26,34 @@ public class DropboxApplication {
 		SpringApplication.run(DropboxApplication.class, args);
 	}
 
+	/**
+	 * Sanitizes filename to prevent path traversal and header injection attacks
+	 */
+	private String sanitizeFilename(String filename) {
+		if (filename == null) {
+			return "unnamed_file";
+		}
+		
+		// Remove path traversal characters
+		String sanitized = filename.replaceAll("\\.\\./", "")
+								 .replaceAll("\\.\\\\", "")
+								 .replaceAll("/", "_")
+								 .replaceAll("\\\\", "_");
+		
+		// Remove newline characters to prevent header injection
+		sanitized = sanitized.replaceAll("[\r\n]", "_");
+		
+		// Remove control characters
+		sanitized = sanitized.replaceAll("[\\x00-\\x1F\\x7F]", "_");
+		
+		// Ensure filename is not empty
+		if (sanitized.trim().isEmpty()) {
+			return "unnamed_file";
+		}
+		
+		return sanitized;
+	}
+
 
 @GetMapping("/files")
 public ResponseEntity<Map<String, Object>> listFiles(){
@@ -38,8 +66,9 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -54,8 +83,9 @@ public ResponseEntity<Map<String,String>> uploadFile(
 	try {
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
+		String sanitizedFilename = sanitizeFilename(fileNname);
 		FileMetaData fileMetaData = new FileMetaData(fileID,
-				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
+				sanitizedFilename, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
 		fileStorage.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
