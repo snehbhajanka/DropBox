@@ -26,6 +26,21 @@ public class DropboxApplication {
 		SpringApplication.run(DropboxApplication.class, args);
 	}
 
+	/**
+	 * Sanitizes filename to prevent HTTP header injection attacks.
+	 * Removes control characters, quotes, and other potentially dangerous characters.
+	 */
+	private String sanitizeFilename(String filename) {
+		if (filename == null) {
+			return "download";
+		}
+		// Remove control characters (0x00-0x1F, 0x7F-0x9F)
+		// Remove quotes, semicolons, and other characters that could break HTTP headers
+		return filename.replaceAll("[\\x00-\\x1F\\x7F-\\x9F\"';\\\\]", "")
+				.trim()
+				.replaceAll("\\s+", "_"); // Replace multiple whitespace with underscore
+	}
+
 
 @GetMapping("/files")
 public ResponseEntity<Map<String, Object>> listFiles(){
@@ -38,8 +53,9 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -52,10 +68,22 @@ public ResponseEntity<Map<String,String>> uploadFile(
 		@RequestParam("file_name") String fileNname,
 		@RequestParam(value = "metadata",required = false) Map<String,String> metaData){
 	try {
+		// Validate filename input
+		if (fileNname == null || fileNname.trim().isEmpty()) {
+			return ResponseEntity.badRequest()
+					.body(Map.of("error", "File name cannot be empty"));
+		}
+		
+		String sanitizedFilename = sanitizeFilename(fileNname);
+		if (sanitizedFilename.isEmpty()) {
+			return ResponseEntity.badRequest()
+					.body(Map.of("error", "Invalid file name"));
+		}
+		
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
 		FileMetaData fileMetaData = new FileMetaData(fileID,
-				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
+				sanitizedFilename, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
 		fileStorage.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
