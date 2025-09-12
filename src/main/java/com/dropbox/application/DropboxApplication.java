@@ -38,8 +38,10 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		// Sanitize filename to prevent header injection attacks
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=" + sanitizedFilename)
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -98,6 +100,32 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 					.body(Map.of("error","Failed to update the file"));
 
 		}
+}
+
+/**
+ * Sanitizes filename to prevent HTTP header injection attacks
+ * Removes or replaces characters that could be used for header injection
+ */
+private String sanitizeFilename(String filename) {
+	if (filename == null) {
+		return "file";
+	}
+	
+	// Remove newlines, carriage returns, and other control characters that could inject headers
+	String sanitized = filename.replaceAll("[\r\n\t\f\b]", "")
+		.replaceAll("[\\x00-\\x1F\\x7F]", ""); // Remove all control characters
+	
+	// If filename becomes empty after sanitization, provide a default
+	if (sanitized.trim().isEmpty()) {
+		return "file";
+	}
+	
+	// Limit length to prevent overly long headers
+	if (sanitized.length() > 255) {
+		sanitized = sanitized.substring(0, 255);
+	}
+	
+	return sanitized;
 }
 
 
