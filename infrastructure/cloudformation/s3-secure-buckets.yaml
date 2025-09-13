@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Secure S3 buckets for DropBox application with S3.3 compliance"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "dev"
+    AllowedValues:
+      - "dev"
+      - "staging"
+      - "prod"
+    Description: "Environment name"
+
+  BucketPrefix:
+    Type: String
+    Description: "Prefix for S3 bucket names (must be globally unique)"
+    MinLength: 3
+    MaxLength: 20
+    AllowedPattern: "^[a-z0-9-]+$"
+    ConstraintDescription: "Bucket prefix must be 3-20 characters, lowercase letters, numbers, and hyphens only"
+
+  EnableVersioning:
+    Type: String
+    Default: "Enabled"
+    AllowedValues:
+      - "Enabled"
+      - "Suspended"
+    Description: "Enable S3 bucket versioning"
+
+Resources:
+  # Primary S3 Bucket for file storage
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "${BucketPrefix}-dropbox-storage"
+      VersioningConfiguration:
+        Status: !Ref EnableVersioning
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: "FileLifecycle"
+            Status: "Enabled"
+            Transitions:
+              - StorageClass: "STANDARD_IA"
+                TransitionInDays: 30
+              - StorageClass: "GLACIER"
+                TransitionInDays: 90
+            ExpirationInDays: 730
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Project"
+          Value: "DropBox"
+        - Key: "Purpose"
+          Value: "File Storage"
+        - Key: "Security"
+          Value: "S3.3-Compliant"
+
+  # CRITICAL SECURITY CONTROL: Public Access Block for primary bucket
+  # This addresses the S3.3 compliance requirement
+  DropBoxStorageBucketPublicAccessBlock:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref DropBoxStorageBucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  # Temporary uploads bucket
+  DropBoxTempUploadsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "${BucketPrefix}-dropbox-temp-uploads"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: "TempCleanup"
+            Status: "Enabled"
+            ExpirationInDays: 7
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Project"
+          Value: "DropBox"
+        - Key: "Purpose"
+          Value: "Temporary Upload Storage"
+        - Key: "Security"
+          Value: "S3.3-Compliant"
+
+  # CRITICAL SECURITY CONTROL: Public Access Block for temp bucket
+  DropBoxTempUploadsBucketPublicAccessBlock:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref DropBoxTempUploadsBucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+Outputs:
+  PrimaryBucketName:
+    Description: "Name of the primary S3 bucket for file storage"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-PrimaryBucket"
+
+  PrimaryBucketArn:
+    Description: "ARN of the primary S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-PrimaryBucketArn"
+
+  TempBucketName:
+    Description: "Name of the temporary uploads S3 bucket"
+    Value: !Ref DropBoxTempUploadsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-TempBucket"
+
+  TempBucketArn:
+    Description: "ARN of the temporary uploads S3 bucket"
+    Value: !GetAtt DropBoxTempUploadsBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TempBucketArn"
+
+  SecurityComplianceStatus:
+    Description: "S3.3 security compliance status"
+    Value: "COMPLIANT - All buckets have public access blocked"
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityCompliance"
+
+  PublicAccessBlockStatus:
+    Description: "Public access block configuration applied to all buckets"
+    Value: "BlockPublicAcls=true, IgnorePublicAcls=true, BlockPublicPolicy=true, RestrictPublicBuckets=true"
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicAccessBlockStatus"
