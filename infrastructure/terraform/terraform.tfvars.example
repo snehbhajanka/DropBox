@@ -1,0 +1,9 @@
+# Terraform Variables for S3 Bucket Configuration
+
+# Required variables
+bucket_name = "dropbox-secure-storage-dev"
+aws_region  = "us-east-1"
+environment = "dev"
+
+# Optional variables with secure defaults
+# All security settings are enabled by default in the Terraform configuration

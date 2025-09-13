@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Secure S3 bucket configuration for DropBox application - blocks public write access"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Name of the S3 bucket"
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    ConstraintDescription: "Bucket name must be lowercase letters, numbers, and hyphens only"
+  
+  Environment:
+    Type: String
+    Default: "dev"
+    AllowedValues: ["dev", "staging", "prod"]
+    Description: "Environment name"
+
+Resources:
+  # S3 Bucket with secure configuration
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+      
+      # CRITICAL SECURITY CONFIGURATION: Block all public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      
+      # Enable versioning for data protection
+      VersioningConfiguration:
+        Status: "Enabled"
+      
+      # Server-side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+      
+      # Lifecycle configuration for cost optimization
+      LifecycleConfiguration:
+        Rules:
+          - Id: "DeleteIncompleteMultipartUploads"
+            Status: "Enabled"
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      
+      # Tags for resource management
+      Tags:
+        - Key: "Name"
+          Value: "DropBox Storage"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "File Storage"
+        - Key: "SecurityCompliant"
+          Value: "true"
+
+  # Bucket policy to explicitly deny public access (additional security layer)
+  DropBoxStorageBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref DropBoxStorageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "DenyPublicReadWrite"
+            Effect: "Deny"
+            Principal: "*"
+            Action:
+              - "s3:GetObject"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+              - "s3:GetObjectVersion"
+              - "s3:DeleteObjectVersion"
+            Resource: 
+              - !Sub "${DropBoxStorageBucket}/*"
+            Condition:
+              StringNotEquals:
+                "aws:PrincipalServiceName": 
+                  - "ec2.amazonaws.com"
+                  - "lambda.amazonaws.com"
+
+Outputs:
+  BucketName:
+    Description: "Name of the created S3 bucket"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+  
+  BucketArn:
+    Description: "ARN of the created S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketArn"
+  
+  BucketDomainName:
+    Description: "Domain name of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketDomainName"
+  
+  SecurityConfiguration:
+    Description: "Security configuration status"
+    Value: "All public access blocked, encryption enabled, versioning enabled"
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityStatus"
