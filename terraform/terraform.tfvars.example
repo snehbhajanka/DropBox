@@ -1,0 +1,11 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and customize for your environment
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Environment Configuration
+environment = "production"
+
+# Bucket Configuration
+bucket_prefix = "dropbox-secure"
