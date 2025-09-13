@@ -1,0 +1,11 @@
+# Example terraform.tfvars file for DropBox S3 infrastructure
+# Copy this file and adjust values as needed for your environment
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# S3 Bucket Configuration
+bucket_count     = 13
+bucket_prefix    = "dropbox-storage"
+environment      = "prod"
+enable_versioning = true
