@@ -38,8 +38,10 @@ public ResponseEntity<Map<String, Object>> listFiles(){
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 	FileMetaData file=fileStorage.get(fileID);
 	if(file!=null){
+		// Sanitize filename to prevent header injection attacks
+		String sanitizedFilename = sanitizeFilename(file.getFileName());
 		return ResponseEntity.ok()
-				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
+				.header("Content-Disposition", "attachment; filename=\"" + sanitizedFilename + "\"")
 				.body(file.getData());
 	} else{
 		return ResponseEntity.notFound().build();
@@ -98,6 +100,43 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 					.body(Map.of("error","Failed to update the file"));
 
 		}
+}
+
+/**
+ * Sanitizes filename to prevent header injection and path traversal attacks
+ * @param filename The original filename
+ * @return Sanitized filename safe for use in HTTP headers
+ */
+private String sanitizeFilename(String filename) {
+	if (filename == null) {
+		return "download";
+	}
+	
+	// Remove CRLF characters to prevent header injection
+	String sanitized = filename.replaceAll("[\\r\\n]", "");
+	
+	// Remove path traversal sequences
+	sanitized = sanitized.replaceAll("\\.\\./", "");
+	sanitized = sanitized.replaceAll("\\.\\.", "");
+	
+	// Remove any remaining control characters and dangerous characters
+	sanitized = sanitized.replaceAll("[\\x00-\\x1F\\x7F]", "");
+	
+	// Remove quotes and semicolons that could break the header
+	sanitized = sanitized.replaceAll("[\"';]", "");
+	
+	// Limit to basic filename characters (alphanumeric, dots, dashes, underscores)
+	sanitized = sanitized.replaceAll("[^a-zA-Z0-9._-]", "_");
+	
+	// Ensure filename is not empty and has reasonable length
+	if (sanitized.isEmpty()) {
+		sanitized = "download";
+	}
+	if (sanitized.length() > 255) {
+		sanitized = sanitized.substring(0, 255);
+	}
+	
+	return sanitized;
 }
 
 
