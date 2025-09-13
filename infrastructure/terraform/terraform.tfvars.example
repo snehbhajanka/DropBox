@@ -1,0 +1,23 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and customize for your environment
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Environment Configuration
+environment = "dev"
+
+# Bucket Configuration
+# IMPORTANT: This must be globally unique across all AWS accounts
+bucket_prefix = "your-org-dropbox"
+
+# Feature Flags
+enable_versioning = true
+enable_lifecycle  = true
+
+# Additional Tags
+tags = {
+  Owner       = "DevOps Team"
+  Application = "DropBox File Storage"
+  CostCenter  = "Engineering"
+}
