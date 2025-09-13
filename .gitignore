@@ -31,3 +31,19 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Terraform ###
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+### AWS ###
+.aws/
+
+### Security ###
+# Don't commit sensitive configuration files
+application-prod.properties
+application-*.properties
+!application.properties
