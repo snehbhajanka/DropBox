@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Secure S3 bucket configuration for DropBox application - Addresses Security Issue S3.3"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Name of the S3 bucket for DropBox application"
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    ConstraintDescription: "Bucket name must be lowercase, alphanumeric, and may contain hyphens"
+  
+  Environment:
+    Type: String
+    Description: "Environment (dev, staging, prod)"
+    Default: "dev"
+    AllowedValues:
+      - "dev"
+      - "staging"
+      - "prod"
+
+Resources:
+  # S3 Bucket with secure configuration
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+      
+      # Critical Security Configuration - Block ALL public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      
+      # Bucket ownership controls
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: "BucketOwnerEnforced"
+      
+      # Server-side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      
+      # Versioning
+      VersioningConfiguration:
+        Status: "Enabled"
+      
+      # Lifecycle configuration
+      LifecycleConfiguration:
+        Rules:
+          - Id: "DeleteOldVersions"
+            Status: "Enabled"
+            NoncurrentVersionExpirationInDays: 30
+      
+      # Tags
+      Tags:
+        - Key: "Name"
+          Value: "DropBox Storage Bucket"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "File Storage"
+        - Key: "Security"
+          Value: "Private"
+        - Key: "Compliance"
+          Value: "S3.3-Compliant"
+
+  # IAM Role for EC2 instances to access S3
+  DropBoxS3AccessRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${BucketName}-s3-access-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      
+      Policies:
+        - PolicyName: "S3BucketAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                  - "s3:ListBucket"
+                Resource:
+                  - !GetAtt DropBoxStorageBucket.Arn
+                  - !Sub "${DropBoxStorageBucket.Arn}/*"
+      
+      Tags:
+        - Key: "Name"
+          Value: "DropBox S3 Access Role"
+        - Key: "Environment"
+          Value: !Ref Environment
+
+  # Instance profile for EC2
+  DropBoxInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - !Ref DropBoxS3AccessRole
+
+Outputs:
+  BucketName:
+    Description: "Name of the S3 bucket"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+  
+  BucketArn:
+    Description: "ARN of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketArn"
+  
+  BucketDomainName:
+    Description: "Domain name of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketDomainName"
+  
+  IAMRoleArn:
+    Description: "ARN of the IAM role for S3 access"
+    Value: !GetAtt DropBoxS3AccessRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IAMRoleArn"
+  
+  InstanceProfileArn:
+    Description: "ARN of the instance profile"
+    Value: !GetAtt DropBoxInstanceProfile.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceProfileArn"

@@ -1,0 +1,11 @@
+# Terraform Example Variables
+# Copy this file to terraform.tfvars and update the values
+
+# Required: Name of the S3 bucket (must be globally unique)
+bucket_name = "your-dropbox-bucket-name-here"
+
+# Optional: AWS region
+aws_region = "us-east-1"
+
+# Optional: Environment
+environment = "dev"
