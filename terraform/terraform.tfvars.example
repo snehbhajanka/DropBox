@@ -1,0 +1,12 @@
+# Example Terraform variable values for DropBox S3 configuration
+# Copy this file to terraform.tfvars and modify as needed
+
+# AWS region - defaults to us-east-2 as specified in the security issue
+aws_region = "us-east-2"
+
+# S3 bucket name - must be globally unique
+# Replace 'your-org' with your organization name or use a unique identifier
+bucket_name = "dropbox-storage-your-org-12345"
+
+# Environment
+environment = "dev"
