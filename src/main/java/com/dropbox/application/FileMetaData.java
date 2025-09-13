@@ -7,10 +7,16 @@ import java.util.Map;
 public class FileMetaData {
 
     private String fileID;
-
-
-
+    private String fileName;
+    private LocalDateTime createdAt;
+    private long size;
     private String contentType;
+    private byte[] data;
+    private Map<String,String> metadata;
+    
+    // S3-specific fields
+    private String s3Key;
+    private String storageType; // "memory" or "s3"
 
     public FileMetaData(String fileID, String fileName, LocalDateTime createdAt, long size, String ContentType, Map<String, String> metadata,byte[] data) {
         this.fileID = fileID;
@@ -20,15 +26,8 @@ public class FileMetaData {
         this.size = size;
         this.metadata = metadata;
         this.data=data;
+        this.storageType = "memory"; // default
     }
-
-    private String fileName;
-    private LocalDateTime createdAt;
-    private long size;
-
-    private byte[] data;
-
-    private Map<String,String> metadata;
 
     public Map<String, String> getMetadata() {
         return metadata;
@@ -84,5 +83,21 @@ public class FileMetaData {
 
     public void setData(byte[] data) {
         this.data = data;
+    }
+
+    public String getS3Key() {
+        return s3Key;
+    }
+
+    public void setS3Key(String s3Key) {
+        this.s3Key = s3Key;
+    }
+
+    public String getStorageType() {
+        return storageType;
+    }
+
+    public void setStorageType(String storageType) {
+        this.storageType = storageType;
     }
 }
