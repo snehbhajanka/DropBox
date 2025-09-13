@@ -1,0 +1,22 @@
+# Example terraform.tfvars file
+# Copy this file to terraform.tfvars and modify the values according to your environment
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# S3 Bucket Configuration
+bucket_name = "dropbox-app-storage-dev-unique-suffix"  # Change this to a globally unique name
+environment = "dev"
+
+# IAM Role/User ARN that the application will use to access S3
+# Replace with your actual IAM role/user ARN
+application_role_arn = "arn:aws:iam::222634381402:role/DropBoxApplicationRole"
+
+# Optional: Override default settings
+enable_versioning = true
+enable_encryption = true
+
+# Lifecycle settings (optional overrides)
+lifecycle_transition_ia_days           = 30
+lifecycle_transition_glacier_days      = 90
+lifecycle_transition_deep_archive_days = 365

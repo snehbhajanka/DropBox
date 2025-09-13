@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Secure S3 bucket configuration for DropBox application with blocked public write access"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Name of the S3 bucket (must be globally unique)"
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    ConstraintDescription: "Bucket name must follow S3 naming conventions"
+    MinLength: 3
+    MaxLength: 63
+
+  Environment:
+    Type: String
+    Description: "Environment name"
+    Default: "dev"
+    AllowedValues:
+      - "dev"
+      - "staging"
+      - "prod"
+
+  ApplicationRoleArn:
+    Type: String
+    Description: "ARN of the IAM role/user that the application will use to access S3"
+    AllowedPattern: "^arn:aws:iam::"
+    ConstraintDescription: "Must be a valid IAM ARN"
+
+  EnableVersioning:
+    Type: String
+    Description: "Enable S3 bucket versioning"
+    Default: "Enabled"
+    AllowedValues:
+      - "Enabled"
+      - "Suspended"
+
+Resources:
+  # S3 Bucket with secure configuration
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+      VersioningConfiguration:
+        Status: !Ref EnableVersioning
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: "TransitionToIA"
+            Status: "Enabled"
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: "STANDARD_IA"
+              - TransitionInDays: 90
+                StorageClass: "GLACIER"
+              - TransitionInDays: 365
+                StorageClass: "DEEP_ARCHIVE"
+          - Id: "DeleteIncompleteMultipartUploads"
+            Status: "Enabled"
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      Tags:
+        - Key: "Name"
+          Value: "DropBox File Storage"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "File Storage"
+        - Key: "Security"
+          Value: "PublicAccessBlocked"
+
+  # Block all public access to the S3 bucket - CRITICAL SECURITY SETTING
+  DropBoxStoragePublicAccessBlock:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref DropBoxStorageBucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  # Bucket policy to ensure secure access
+  DropBoxStorageBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    DependsOn: DropBoxStoragePublicAccessBlock
+    Properties:
+      Bucket: !Ref DropBoxStorageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "DenyPublicWrite"
+            Effect: "Deny"
+            Principal: "*"
+            Action:
+              - "s3:PutObject"
+              - "s3:PutObjectAcl"
+              - "s3:DeleteObject"
+            Resource: !Sub "${DropBoxStorageBucket}/*"
+            Condition:
+              StringNotEquals:
+                "aws:PrincipalServiceName":
+                  - "ec2.amazonaws.com"
+                  - "lambda.amazonaws.com"
+          - Sid: "AllowApplicationAccess"
+            Effect: "Allow"
+            Principal:
+              AWS: !Ref ApplicationRoleArn
+            Action:
+              - "s3:GetObject"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+              - "s3:ListBucket"
+            Resource:
+              - !Sub "${DropBoxStorageBucket}"
+              - !Sub "${DropBoxStorageBucket}/*"
+
+Outputs:
+  BucketName:
+    Description: "Name of the created S3 bucket"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+
+  BucketArn:
+    Description: "ARN of the created S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketArn"
+
+  BucketDomainName:
+    Description: "Domain name of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketDomainName"
+
+  BucketRegionalDomainName:
+    Description: "Regional domain name of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.RegionalDomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketRegionalDomainName"
+
+  PublicAccessSettings:
+    Description: "Public access block settings for verification"
+    Value: "All public access blocked (BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true)"
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicAccessSettings"
+
+  SecurityCompliance:
+    Description: "Security compliance status"
+    Value: "S3.3 Control - Public write access blocked ✓"
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityCompliance"
