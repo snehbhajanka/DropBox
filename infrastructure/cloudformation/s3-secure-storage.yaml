@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Secure S3 bucket configuration for DropBox application - addresses security finding: S3 general purpose buckets should block public write access'
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: 'dropbox-storage-secure-222634381402'
+    Description: 'Name of the S3 bucket for DropBox storage'
+    AllowedPattern: '^[a-z0-9.-]+$'
+    ConstraintDescription: 'Bucket name must contain only lowercase letters, numbers, dots, and hyphens'
+  
+  Environment:
+    Type: String
+    Default: 'prod'
+    AllowedValues: ['dev', 'staging', 'prod']
+    Description: 'Environment name'
+
+Resources:
+  # S3 Bucket with secure configuration
+  DropBoxStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_INFREQUENT_ACCESS
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+            ExpirationInDays: 365
+            NoncurrentVersionExpirationInDays: 30
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: 'DropBox Storage'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: 'File storage for DropBox application'
+        - Key: SecurityCompliance
+          Value: 'Public access blocked'
+
+  # IAM Role for DropBox application
+  DropBoxAppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${BucketName}-app-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Tags:
+        - Key: Name
+          Value: 'DropBox Application Role'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # IAM Policy for S3 access
+  DropBoxS3AccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${BucketName}-s3-access'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+            Resource:
+              - !GetAtt DropBoxStorageBucket.Arn
+              - !Sub '${DropBoxStorageBucket.Arn}/*'
+      Roles:
+        - !Ref DropBoxAppRole
+
+  # Instance Profile for EC2 instances
+  DropBoxInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${BucketName}-app-profile'
+      Roles:
+        - !Ref DropBoxAppRole
+
+Outputs:
+  BucketName:
+    Description: 'Name of the created S3 bucket'
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketName'
+
+  BucketArn:
+    Description: 'ARN of the created S3 bucket'
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketArn'
+
+  BucketDomainName:
+    Description: 'Domain name of the S3 bucket'
+    Value: !GetAtt DropBoxStorageBucket.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketDomainName'
+
+  IAMRoleArn:
+    Description: 'ARN of the IAM role for the application'
+    Value: !GetAtt DropBoxAppRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-IAMRoleArn'
+
+  InstanceProfileName:
+    Description: 'Name of the instance profile for EC2 instances'
+    Value: !Ref DropBoxInstanceProfile
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceProfileName'
+
+  SecurityComplianceStatus:
+    Description: 'Security compliance verification'
+    Value: 'S3 bucket configured with public access blocked, encryption enabled, versioning enabled, lifecycle configured'
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityCompliance'
