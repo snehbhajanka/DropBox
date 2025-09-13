@@ -1,10 +1,13 @@
 package com.dropbox.application;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-public class FileMetaData {
+public class FileMetaData implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private String fileID;
 
