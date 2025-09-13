@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Secure S3 bucket configuration for DropBox application with all public access blocked"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Name of the S3 bucket for DropBox storage"
+    MinLength: 3
+    MaxLength: 63
+    ConstraintDescription: "Bucket name must be between 3 and 63 characters"
+  
+  Environment:
+    Type: String
+    Default: "dev"
+    AllowedValues:
+      - "dev"
+      - "staging"
+      - "prod"
+    Description: "Environment name (dev, staging, prod)"
+
+Resources:
+  # S3 Bucket with secure configuration
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+      # Public access is completely blocked - addresses security vulnerability
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      # Enable versioning for data protection
+      VersioningConfiguration:
+        Status: "Enabled"
+      # Server-side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      # Lifecycle configuration to manage storage costs
+      LifecycleConfiguration:
+        Rules:
+          - Id: "DeleteIncompleteMultipartUploads"
+            Status: "Enabled"
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: "TransitionToIA"
+            Status: "Enabled"
+            Transition:
+              Days: 30
+              StorageClass: "STANDARD_IA"
+      # Tags for resource management
+      Tags:
+        - Key: "Name"
+          Value: "DropBox Storage"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Security"
+          Value: "HighSecurity"
+        - Key: "Purpose"
+          Value: "FileStorage"
+        - Key: "ComplianceControl"
+          Value: "S3.3-PublicWriteAccessBlocked"
+
+  # Additional bucket policy to deny public access (defense in depth)
+  DropBoxStorageBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref DropBoxStorageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "DenyDirectPublicAccess"
+            Effect: "Deny"
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !GetAtt DropBoxStorageBucket.Arn
+              - !Sub "${DropBoxStorageBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                "aws:PrincipalServiceName":
+                  - "cloudformation.amazonaws.com"
+                  - "ec2.amazonaws.com"
+              Bool:
+                "aws:ViaAWSService": "false"
+
+Outputs:
+  BucketName:
+    Description: "Name of the created S3 bucket"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+
+  BucketArn:
+    Description: "ARN of the created S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketArn"
+
+  BucketDomainName:
+    Description: "Domain name of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketDomainName"
+
+  PublicAccessBlockConfiguration:
+    Description: "Public access block settings (all should be true for security)"
+    Value: "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicAccessBlock"
