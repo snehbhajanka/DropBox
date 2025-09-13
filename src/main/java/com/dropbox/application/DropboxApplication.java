@@ -1,5 +1,7 @@
 package com.dropbox.application;
 
+import com.dropbox.application.service.FileStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -19,7 +21,8 @@ import java.util.UUID;
 @RestController
 public class DropboxApplication {
 
-	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
+	@Autowired
+	private FileStorageService fileStorageService;
 
 	public static void main(String[] args) {
 
@@ -29,14 +32,15 @@ public class DropboxApplication {
 
 @GetMapping("/files")
 public ResponseEntity<Map<String, Object>> listFiles(){
-	if(fileStorage!=null && fileStorage.values()!=null && !fileStorage.values().isEmpty())
-		return ResponseEntity.ok(Map.of("files",fileStorage.values()));
+	var files = fileStorageService.listFiles();
+	if(files != null && !files.isEmpty())
+		return ResponseEntity.ok(Map.of("files", files));
 	else return ResponseEntity.ok(Map.of("status","No files to display"));
 }
 
 @GetMapping("/files/{fileID}")
 public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
-	FileMetaData file=fileStorage.get(fileID);
+	FileMetaData file = fileStorageService.getFile(fileID);
 	if(file!=null){
 		return ResponseEntity.ok()
 				.header("Content-Disposition", "attachment; filename=" + file.getFileName())
@@ -56,7 +60,7 @@ public ResponseEntity<Map<String,String>> uploadFile(
 		byte[] fileData = file.getBytes();
 		FileMetaData fileMetaData = new FileMetaData(fileID,
 				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
-		fileStorage.put(fileID, fileMetaData);
+		fileStorageService.storeFile(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -66,8 +70,8 @@ public ResponseEntity<Map<String,String>> uploadFile(
 
 @DeleteMapping("/files/{fileID}")
 public ResponseEntity<?> deleteFile(@PathVariable String fileID){
-		if(fileStorage.containsKey(fileID)){
-			fileStorage.remove(fileID);
+		if(fileStorageService.fileExists(fileID)){
+			fileStorageService.deleteFile(fileID);
 			return ResponseEntity.ok(Map.of("message","File deleted successfully"));
 		} else {
 			return  ResponseEntity.notFound().build();
@@ -79,7 +83,7 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 									@RequestParam(value="file",required = false) MultipartFile file,
 									@RequestParam(value ="metadata",required = false) Map<String,String> metaData){
 		try {
-			FileMetaData fileMetaData = fileStorage.get(fileID);
+			FileMetaData fileMetaData = fileStorageService.getFile(fileID);
 			if (fileMetaData != null) {
 				if (file != null) {
 					fileMetaData.setData(file.getBytes());
@@ -89,6 +93,7 @@ public ResponseEntity<?> updateFile(@PathVariable String fileID,
 				if (metaData != null) {
 					fileMetaData.getMetadata().putAll(metaData);
 				}
+				fileStorageService.updateFile(fileID, fileMetaData);
 				return ResponseEntity.ok(fileMetaData.getMetadata());
 			} else {
 				return ResponseEntity.notFound().build();
