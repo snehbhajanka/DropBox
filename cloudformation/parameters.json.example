@@ -1,0 +1,21 @@
+# Example parameters file for CloudFormation deployment
+# Copy this file to parameters.json and modify the values according to your environment
+
+[
+  {
+    "ParameterKey": "BucketName",
+    "ParameterValue": "dropbox-app-storage-dev-unique-suffix"
+  },
+  {
+    "ParameterKey": "Environment", 
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ApplicationRoleArn",
+    "ParameterValue": "arn:aws:iam::222634381402:role/DropBoxApplicationRole"
+  },
+  {
+    "ParameterKey": "EnableVersioning",
+    "ParameterValue": "Enabled"
+  }
+]

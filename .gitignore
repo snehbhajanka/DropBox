@@ -31,3 +31,24 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Terraform ###
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfplan
+
+### CloudFormation ###
+parameters.json
+
+### AWS ###
+.aws/
+aws-credentials
+
+### Sensitive Files ###
+*.pem
+*.key
+*.p12
+*.jks
