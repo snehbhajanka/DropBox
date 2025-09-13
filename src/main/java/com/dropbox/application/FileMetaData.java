@@ -1,6 +1,7 @@
 package com.dropbox.application;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +19,7 @@ public class FileMetaData {
         this.createdAt = createdAt;
         this.contentType=ContentType;
         this.size = size;
-        this.metadata = metadata;
+        this.metadata = metadata != null ? new HashMap<>(metadata) : new HashMap<>();
         this.data=data;
     }
 
