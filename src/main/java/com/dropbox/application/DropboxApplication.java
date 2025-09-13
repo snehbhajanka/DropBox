@@ -9,21 +9,65 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileDescriptor;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @SpringBootApplication
 @RestController
 public class DropboxApplication {
 
 	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
+	
+	// Security: Pattern to validate safe filenames
+	private static final Pattern SAFE_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._-]+$");
+	private static final int MAX_FILENAME_LENGTH = 255;
 
 	public static void main(String[] args) {
 
 		SpringApplication.run(DropboxApplication.class, args);
+	}
+
+	/**
+	 * Sanitizes filename to prevent directory traversal and other attacks
+	 */
+	private String sanitizeFilename(String filename) {
+		if (filename == null || filename.isEmpty()) {
+			return "unnamed_file";
+		}
+		
+		// Remove null bytes and control characters
+		String sanitized = filename.replaceAll("[\\x00-\\x1f\\x7f]", "");
+		
+		// Remove path traversal attempts
+		sanitized = sanitized.replaceAll("[\\.]{2,}", ".");
+		sanitized = sanitized.replace("../", "").replace("..\\", "");
+		sanitized = sanitized.replace("/", "_").replace("\\", "_");
+		
+		// Remove leading/trailing dots and spaces
+		sanitized = sanitized.trim().replaceAll("^[.\\s]+|[.\\s]+$", "");
+		
+		// Limit length
+		if (sanitized.length() > MAX_FILENAME_LENGTH) {
+			String extension = "";
+			int lastDot = sanitized.lastIndexOf('.');
+			if (lastDot > 0) {
+				extension = sanitized.substring(lastDot);
+				sanitized = sanitized.substring(0, lastDot);
+			}
+			sanitized = sanitized.substring(0, Math.min(sanitized.length(), MAX_FILENAME_LENGTH - extension.length())) + extension;
+		}
+		
+		// If filename is empty after sanitization, provide default
+		if (sanitized.isEmpty()) {
+			sanitized = "unnamed_file";
+		}
+		
+		return sanitized;
 	}
 
 
@@ -49,13 +93,17 @@ public ResponseEntity<byte[]> readFile(@PathVariable String fileID){
 @PostMapping("/files/upload")
 public ResponseEntity<Map<String,String>> uploadFile(
 		@RequestParam("file") MultipartFile file,
-		@RequestParam("file_name") String fileNname,
+		@RequestParam("file_name") String fileName,
 		@RequestParam(value = "metadata",required = false) Map<String,String> metaData){
 	try {
 		String fileID = UUID.randomUUID().toString();
 		byte[] fileData = file.getBytes();
+		
+		// Security: Sanitize filename to prevent directory traversal and other attacks
+		String sanitizedFileName = sanitizeFilename(fileName);
+		
 		FileMetaData fileMetaData = new FileMetaData(fileID,
-				fileNname, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
+				sanitizedFileName, LocalDateTime.now(), file.getSize(), file.getContentType(), metaData, fileData);
 		fileStorage.put(fileID, fileMetaData);
 		return ResponseEntity.ok(Map.of("file_id",fileID));
 	} catch(Exception e){
