@@ -1,0 +1,6 @@
+# Example terraform.tfvars file
+# Copy this file to terraform.tfvars and customize the values
+
+bucket_name  = "my-dropbox-storage-unique-name-12345"
+aws_region   = "us-east-1"
+environment  = "dev"
