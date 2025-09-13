@@ -72,7 +72,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "dropbox_bucket_lifecycle" {
   rule {
     id     = "delete_old_versions"
     status = "Enabled"
-    
+
     filter {
       prefix = ""
     }
