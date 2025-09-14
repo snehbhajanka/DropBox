@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Secure S3 bucket configuration for DropBox application - addresses S3.3 security finding"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Name for the S3 bucket (must be globally unique)"
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    ConstraintDescription: "Bucket name must be a valid S3 bucket name (lowercase letters, numbers, and hyphens only)"
+    
+  Environment:
+    Type: String
+    Description: "Environment name"
+    Default: "dev"
+    AllowedValues:
+      - "dev"
+      - "staging"
+      - "prod"
+
+Resources:
+  # Main S3 bucket for DropBox storage
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+      
+      # Public Access Block Configuration - CRITICAL for S3.3 compliance
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      
+      # Server-side encryption
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      
+      # Versioning enabled
+      VersioningConfiguration:
+        Status: "Enabled"
+      
+      # Lifecycle configuration for cost optimization
+      LifecycleConfiguration:
+        Rules:
+          - Id: "TransitionToIA"
+            Status: "Enabled"
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: "STANDARD_IA"
+              - TransitionInDays: 90
+                StorageClass: "GLACIER"
+            NoncurrentVersionExpirationInDays: 90
+      
+      # Access logging configuration
+      LoggingConfiguration:
+        DestinationBucketName: !Ref AccessLogsBucket
+        LogFilePrefix: "access-logs/"
+      
+      # Notification configuration for security monitoring
+      NotificationConfiguration:
+        CloudWatchConfigurations:
+          - Event: "s3:ObjectCreated:*"
+            CloudWatchConfiguration:
+              LogGroupName: !Ref CloudWatchLogGroup
+      
+      Tags:
+        - Key: "Name"
+          Value: "DropBox Storage"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "File storage for DropBox application"
+        - Key: "SecurityCompliance"
+          Value: "S3.3-Compliant"
+
+  # Separate bucket for access logs
+  AccessLogsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "${BucketName}-access-logs"
+      
+      # Public Access Block Configuration for logs bucket too
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      
+      # Server-side encryption for logs
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+      
+      # Lifecycle for log retention
+      LifecycleConfiguration:
+        Rules:
+          - Id: "DeleteOldLogs"
+            Status: "Enabled"
+            ExpirationInDays: 90
+      
+      Tags:
+        - Key: "Name"
+          Value: "DropBox Access Logs"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "Access logs for DropBox storage bucket"
+
+  # CloudWatch Log Group for S3 events
+  CloudWatchLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "/aws/s3/${BucketName}"
+      RetentionInDays: 30
+      
+  # IAM role for application to access S3 bucket
+  DropBoxS3AccessRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "DropBox-S3-Access-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "S3AccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                  - "s3:ListBucket"
+                Resource:
+                  - !GetAtt DropBoxStorageBucket.Arn
+                  - !Sub "${DropBoxStorageBucket.Arn}/*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: !GetAtt CloudWatchLogGroup.Arn
+
+  # Instance profile for EC2 instances
+  DropBoxInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - !Ref DropBoxS3AccessRole
+
+Outputs:
+  BucketName:
+    Description: "Name of the created S3 bucket"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+      
+  BucketArn:
+    Description: "ARN of the created S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketArn"
+      
+  BucketDomainName:
+    Description: "Domain name of the S3 bucket"
+    Value: !GetAtt DropBoxStorageBucket.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketDomainName"
+      
+  PublicAccessBlockStatus:
+    Description: "Confirmation that all public access is blocked"
+    Value: "All public access blocked: BlockPublicAcls=true, IgnorePublicAcls=true, BlockPublicPolicy=true, RestrictPublicBuckets=true"
+    
+  AccessLogsBucketName:
+    Description: "Name of the access logs bucket"
+    Value: !Ref AccessLogsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-AccessLogsBucket"
+      
+  IAMRoleArn:
+    Description: "ARN of the IAM role for S3 access"
+    Value: !GetAtt DropBoxS3AccessRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IAMRoleArn"
