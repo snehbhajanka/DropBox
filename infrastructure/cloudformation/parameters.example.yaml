@@ -1,0 +1,8 @@
+# CloudFormation Parameters Example
+# Use these parameters when deploying the CloudFormation stack
+
+Parameters:
+  - ParameterKey: BucketName
+    ParameterValue: your-dropbox-storage-bucket-name
+  - ParameterKey: Environment
+    ParameterValue: dev
