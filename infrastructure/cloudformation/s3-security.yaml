@@ -1,0 +1,430 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "S3 Bucket Security Configuration - Remediation for S3.3 Misconfiguration"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "prod"
+    AllowedValues: 
+      - "dev"
+      - "staging"
+      - "prod"
+    Description: "Environment for the S3 buckets"
+
+Resources:
+  # S3 Bucket 1: Primary Storage
+  DropBoxStorageBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-storage-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-storage-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Storage"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 2: Secondary Storage
+  DropBoxStorageBucket2:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-storage-bucket-2"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-storage-bucket-2"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Storage"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 3: Tertiary Storage
+  DropBoxStorageBucket3:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-storage-bucket-3"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-storage-bucket-3"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Storage"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 4: Backup Bucket 1
+  DropBoxBackupBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-backup-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-backup-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Backup"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 5: Backup Bucket 2
+  DropBoxBackupBucket2:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-backup-bucket-2"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-backup-bucket-2"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Backup"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 6: Logs Bucket 1
+  DropBoxLogsBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-logs-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-logs-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Logs"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 7: Logs Bucket 2
+  DropBoxLogsBucket2:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-logs-bucket-2"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-logs-bucket-2"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Logs"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 8: Temporary Bucket 1
+  DropBoxTempBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-temp-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-temp-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Temporary Storage"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 9: Temporary Bucket 2
+  DropBoxTempBucket2:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-temp-bucket-2"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-temp-bucket-2"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Temporary Storage"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 10: Uploads Bucket 1
+  DropBoxUploadsBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-uploads-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-uploads-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Uploads"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 11: Uploads Bucket 2
+  DropBoxUploadsBucket2:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-uploads-bucket-2"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-uploads-bucket-2"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Uploads"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 12: Config Bucket
+  DropBoxConfigBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-config-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-config-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Configuration"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+  # S3 Bucket 13: Archive Bucket
+  DropBoxArchiveBucket1:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "dropbox-app-archive-bucket-1"
+      AccessControl: "Private"
+      VersioningConfiguration:
+        Status: "Enabled"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Name"
+          Value: "dropbox-app-archive-bucket-1"
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Purpose"
+          Value: "DropBox Application Archive"
+        - Key: "Security"
+          Value: "Hardened"
+        - Key: "Compliance"
+          Value: "S3.3-Remediated"
+
+Outputs:
+  SecureBucketNames:
+    Description: "Names of all secured S3 buckets"
+    Value: !Join 
+      - ","
+      - - !Ref DropBoxStorageBucket1
+        - !Ref DropBoxStorageBucket2
+        - !Ref DropBoxStorageBucket3
+        - !Ref DropBoxBackupBucket1
+        - !Ref DropBoxBackupBucket2
+        - !Ref DropBoxLogsBucket1
+        - !Ref DropBoxLogsBucket2
+        - !Ref DropBoxTempBucket1
+        - !Ref DropBoxTempBucket2
+        - !Ref DropBoxUploadsBucket1
+        - !Ref DropBoxUploadsBucket2
+        - !Ref DropBoxConfigBucket1
+        - !Ref DropBoxArchiveBucket1
+
+  SecurityCompliance:
+    Description: "Security compliance status"
+    Value: "All 13 buckets configured with S3.3 remediation - Public access blocked"
+
+  BucketCount:
+    Description: "Number of secured buckets"
+    Value: "13"
