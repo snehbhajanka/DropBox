@@ -1,6 +1,7 @@
 package com.dropbox.application;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,14 +13,14 @@ public class FileMetaData {
 
     private String contentType;
 
-    public FileMetaData(String fileID, String fileName, LocalDateTime createdAt, long size, String ContentType, Map<String, String> metadata,byte[] data) {
+    public FileMetaData(String fileID, String fileName, LocalDateTime createdAt, long size, String ContentType, Map<String, String> metadata, byte[] data) {
         this.fileID = fileID;
         this.fileName = fileName;
         this.createdAt = createdAt;
-        this.contentType=ContentType;
+        this.contentType = ContentType;
         this.size = size;
-        this.metadata = metadata;
-        this.data=data;
+        this.metadata = metadata != null ? metadata : new HashMap<>();
+        this.data = data; // Can be null when using S3 storage
     }
 
     private String fileName;
