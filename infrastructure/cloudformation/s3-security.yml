@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  S3 Bucket Security Configuration for DropBox Application
+  Addresses Security Issue S3.3 - Block Public Write Access
+  Ensures all S3 buckets have proper public access blocks configured
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "S3 Configuration"
+        Parameters:
+          - BucketName
+          - Environment
+      - Label:
+          default: "Security Configuration"
+        Parameters:
+          - EnableVersioning
+          - EnableEncryption
+    ParameterLabels:
+      BucketName:
+        default: "S3 Bucket Name"
+      Environment:
+        default: "Environment"
+      EnableVersioning:
+        default: "Enable Versioning"
+      EnableEncryption:
+        default: "Enable Encryption"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Name of the primary S3 bucket for DropBox storage (must be globally unique)"
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    ConstraintDescription: "Bucket name must be valid S3 bucket name (lowercase letters, numbers, and hyphens only)"
+    
+  Environment:
+    Type: String
+    Description: "Environment name"
+    Default: "prod"
+    AllowedValues:
+      - "dev"
+      - "staging"
+      - "prod"
+      
+  EnableVersioning:
+    Type: String
+    Description: "Enable versioning on S3 buckets"
+    Default: "Enabled"
+    AllowedValues:
+      - "Enabled"
+      - "Suspended"
+      
+  EnableEncryption:
+    Type: String
+    Description: "Enable server-side encryption on S3 buckets"
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+
+Resources:
+  # Primary DropBox Storage Bucket
+  DropBoxStorageBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+      VersioningConfiguration:
+        Status: !Ref EnableVersioning
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: !Ref EnableEncryption
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Project"
+          Value: "DropBox"
+        - Key: "ManagedBy"
+          Value: "CloudFormation"
+        - Key: "SecurityControl"
+          Value: "S3.3-BlockPublicAccess"
+
+  # Backup Storage Bucket
+  DropBoxBackupsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "${BucketName}-backups"
+      VersioningConfiguration:
+        Status: !Ref EnableVersioning
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: !Ref EnableEncryption
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Project"
+          Value: "DropBox"
+        - Key: "Purpose"
+          Value: "Backup"
+        - Key: "ManagedBy"
+          Value: "CloudFormation"
+        - Key: "SecurityControl"
+          Value: "S3.3-BlockPublicAccess"
+
+  # Logs Storage Bucket
+  DropBoxLogsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "${BucketName}-logs"
+      VersioningConfiguration:
+        Status: !Ref EnableVersioning
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: !Ref EnableEncryption
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "Project"
+          Value: "DropBox"
+        - Key: "Purpose"
+          Value: "Logging"
+        - Key: "ManagedBy"
+          Value: "CloudFormation"
+        - Key: "SecurityControl"
+          Value: "S3.3-BlockPublicAccess"
+
+Outputs:
+  DropBoxStorageBucketName:
+    Description: "Name of the primary DropBox storage bucket"
+    Value: !Ref DropBoxStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-DropBoxStorageBucket"
+      
+  DropBoxStorageBucketArn:
+    Description: "ARN of the primary DropBox storage bucket"
+    Value: !GetAtt DropBoxStorageBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DropBoxStorageBucketArn"
+      
+  DropBoxBackupsBucketName:
+    Description: "Name of the DropBox backups bucket"
+    Value: !Ref DropBoxBackupsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-DropBoxBackupsBucket"
+      
+  DropBoxLogsBucketName:
+    Description: "Name of the DropBox logs bucket"
+    Value: !Ref DropBoxLogsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-DropBoxLogsBucket"
+      
+  PublicAccessBlockStatus:
+    Description: "Confirmation that all buckets have public access blocked"
+    Value: "All buckets have BlockPublicAcls, IgnorePublicAcls, BlockPublicPolicy, and RestrictPublicBuckets set to true"
