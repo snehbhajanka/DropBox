@@ -1,5 +1,6 @@
 package com.dropbox.application;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,9 @@ import java.util.UUID;
 public class DropboxApplication {
 
 	private static final Map<String,FileMetaData> fileStorage=new HashMap<>();
+	
+	@Autowired
+	private S3StorageService s3StorageService;
 
 	public static void main(String[] args) {
 
